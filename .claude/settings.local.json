@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($a = Test-Path \"C:\\\\Users\\\\thunderX\\\\Desktop\\\\Programing\\\\pomodoro-native\\\\assets\\\\icon.png\"; $n = Test-Path \"C:\\\\Users\\\\thunderX\\\\Desktop\\\\Programing\\\\pomodoro-native\\\\node_modules\\\\.bin\"; Write-Output \"assets/icon.png: $a\"; Write-Output \"node_modules: $n\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\thunderX\\\\Desktop\\\\Programing\\\\pomodoro-native\" -Recurse -Exclude node_modules)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(xargs grep -l \"openai\\\\|api\\\\|fetch\\\\|axios\\\\|gpt\\\\|claude\")",
+      "Bash(gh auth *)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}

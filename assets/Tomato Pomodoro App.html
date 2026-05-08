@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tomato · Pomodoro app</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;550;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; font-family: 'Inter', sans-serif; }
+  * { box-sizing: border-box; }
+  /* Smooth scrollbars hidden inside artboards */
+  ::-webkit-scrollbar { width: 0; height: 0; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="android-frame.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="pomodoro-tokens.jsx"></script>
+<script type="text/babel" src="pomodoro-ui.jsx"></script>
+<script type="text/babel" src="onboarding-screens.jsx"></script>
+<script type="text/babel" src="app-screens.jsx"></script>
+<script type="text/babel" src="voice-tasks.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+const { useState, useEffect, useMemo } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "palette": "sunset",
+  "mode": "light"
+}/*EDITMODE-END*/;
+
+// Wrap a screen in an iOS device frame
+function IOSWrap({ children, t, dark }) {
+  return (
+    <IOSDevice width={390} height={780} dark={dark}>
+      <div style={{ width: '100%', height: '100%', background: t.bg }}>{children}</div>
+    </IOSDevice>
+  );
+}
+
+// Wrap a screen in an Android device frame
+function AndroidWrap({ children, t, dark }) {
+  // Android frame includes its own status bar + nav bar; we render screens that
+  // already have their own status-bar inset, so use offset 0 for Android.
+  return (
+    <AndroidDevice width={392} height={780} dark={dark}>
+      <div style={{ width: '100%', height: '100%', background: t.bg }}>{children}</div>
+    </AndroidDevice>
+  );
+}
+
+function App() {
+  const [tw, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const t = useMemo(() => getTokens(tw.palette, tw.mode), [tw.palette, tw.mode]);
+  const dark = tw.mode === 'dark';
+  const tweaks = tw;
+
+  return (
+    <DesignCanvas>
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* HEADER NOTE */}
+      {/* ─────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="intro"
+        title="Tomato · Pomodoro Focus Timer"
+        subtitle={`A modern, calming productivity app — ${PALETTES[tweaks.palette].name} palette · ${dark ? 'dark' : 'light'} mode. Use the Tweaks panel (toolbar) to swap palette & theme.`}
+      >
+        <DCArtboard id="dna" label="Design DNA" width={620} height={300}>
+          <div style={{
+            width: '100%', height: '100%', background: t.bg, color: t.ink,
+            fontFamily: FONT_UI, padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 18,
+          }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: t.focus }}>System</div>
+              <div style={{ fontFamily: FONT_DISPLAY, fontSize: 30, lineHeight: 1.1, letterSpacing: '-0.02em', marginTop: 4 }}>
+                Calming, warm, <em style={{ fontStyle: 'italic', color: t.focus }}>unhurried.</em>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 24, flex: 1 }}>
+              {/* Palette */}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: t.mute, marginBottom: 8 }}>Palette</div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {[
+                    { c: t.bg, label: 'bg' },
+                    { c: t.focus, label: 'focus' },
+                    { c: t.plum, label: 'plum' },
+                    { c: t.breakC, label: 'break' },
+                    { c: t.warm, label: 'warm' },
+                  ].map((s, i) => (
+                    <div key={i} style={{ flex: 1 }}>
+                      <div style={{ height: 56, borderRadius: 12, background: s.c, boxShadow: `inset 0 0 0 1px ${t.line}` }} />
+                      <div style={{ fontSize: 10, color: t.mute, marginTop: 6 }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Type */}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: t.mute, marginBottom: 8 }}>Type</div>
+                <div style={{ fontFamily: FONT_DISPLAY, fontSize: 38, lineHeight: 1, letterSpacing: '-0.02em' }}>25:00</div>
+                <div style={{ fontSize: 11, color: t.mute, marginTop: 4 }}>Instrument Serif · numerals & headlines</div>
+                <div style={{ fontFamily: FONT_UI, fontWeight: 600, marginTop: 12, fontSize: 14 }}>Stay focused, achieve more.</div>
+                <div style={{ fontSize: 11, color: t.mute, marginTop: 2 }}>Inter · UI &amp; body</div>
+              </div>
+              {/* Sample blob */}
+              <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>
+                <BlobTimer size={130} progress={0.35} t={t} paused={false} seed={99} />
+              </div>
+            </div>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* ONBOARDING */}
+      {/* ─────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="onboarding"
+        title="01 · Onboarding"
+        subtitle="Five-screen first-run flow: welcome, features, personalization, permissions, kickoff."
+      >
+        <DCArtboard id="onb-1" label="01 · Welcome" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}><OnbWelcome t={t} statusOffset={54} /></IOSWrap>
+        </DCArtboard>
+        <DCArtboard id="onb-2" label="02 · Features" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}><OnbFeatures t={t} statusOffset={54} /></IOSWrap>
+        </DCArtboard>
+        <DCArtboard id="onb-3" label="03 · Personalize" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}><OnbPersonalize t={t} statusOffset={54} /></IOSWrap>
+        </DCArtboard>
+        <DCArtboard id="onb-4" label="04 · Notifications" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}><OnbNotifications t={t} statusOffset={54} /></IOSWrap>
+        </DCArtboard>
+        <DCArtboard id="onb-5" label="05 · Begin" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}><OnbFinal t={t} statusOffset={54} /></IOSWrap>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* TIMER */}
+      {/* ─────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="timer"
+        title="02 · Home / Timer"
+        subtitle="Liquid blob morph fills as time passes. Focus = warm; break = sage. Three states shown."
+      >
+        <DCArtboard id="timer-focus" label="Focus · running" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}>
+            <ScreenTimer t={t} statusOffset={54} isBreak={false} paused={false} progress={0.32} secondsLeft={17 * 60 + 4} />
+          </IOSWrap>
+        </DCArtboard>
+        <DCArtboard id="timer-paused" label="Focus · paused" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}>
+            <ScreenTimer t={t} statusOffset={54} isBreak={false} paused={true} progress={0.32} secondsLeft={17 * 60 + 4} />
+          </IOSWrap>
+        </DCArtboard>
+        <DCArtboard id="timer-break" label="Short break" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}>
+            <ScreenTimer t={t} statusOffset={54} isBreak={true} paused={false} progress={0.6} secondsLeft={2 * 60 + 12} label="Short break" />
+          </IOSWrap>
+        </DCArtboard>
+        <DCArtboard id="timer-focus-mode" label="Focus mode (full-bleed)" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}><ScreenFocusMode t={t} statusOffset={54} /></IOSWrap>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* TASKS */}
+      {/* ─────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="tasks"
+        title="03 · Tasks"
+        subtitle="Plan in tomatoes, tag by project, see what's running. Add-task sheet shown alongside list."
+      >
+        <DCArtboard id="tasks-list" label="Task list" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}><ScreenTasks t={t} statusOffset={54} /></IOSWrap>
+        </DCArtboard>
+        <DCArtboard id="tasks-add" label="Add task (sheet)" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}><ScreenAddTask t={t} statusOffset={54} /></IOSWrap>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* VOICE → TASKS */}
+      {/* ─────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="voice"
+        title="03b · Voice → Tasks (AI)"
+        subtitle="Speak naturally. We transcribe, understand, and draft tasks with tags, durations and due times — ready to confirm."
+      >
+        <DCArtboard id="voice-1" label="01 · Idle" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}><ScreenVoiceIdle t={t} statusOffset={54} /></IOSWrap>
+        </DCArtboard>
+        <DCArtboard id="voice-2" label="02 · Listening" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}><ScreenVoiceListening t={t} statusOffset={54} /></IOSWrap>
+        </DCArtboard>
+        <DCArtboard id="voice-3" label="03 · Parsing" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}><ScreenVoiceParsing t={t} statusOffset={54} /></IOSWrap>
+        </DCArtboard>
+        <DCArtboard id="voice-4" label="04 · Review & confirm" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}><ScreenVoiceReview t={t} statusOffset={54} /></IOSWrap>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* STATS */}
+      {/* ─────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="stats"
+        title="04 · Statistics"
+        subtitle="Today hero, weekly bar chart, time-by-tag breakdown, and mood trend."
+      >
+        <DCArtboard id="stats-main" label="Insights" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}><ScreenStats t={t} statusOffset={54} /></IOSWrap>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* SETTINGS + EXTRAS */}
+      {/* ─────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="settings"
+        title="05 · Settings & extras"
+        subtitle="Durations, sounds, theme, focus mode. Plus mood check-in and ambient picker."
+      >
+        <DCArtboard id="set-main" label="Settings" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}><ScreenSettings t={t} statusOffset={54} dark={dark} /></IOSWrap>
+        </DCArtboard>
+        <DCArtboard id="set-mood" label="Mood check-in" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}>
+            {/* Show the mood sheet over a dimmed timer */}
+            <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+              <ScreenTimer t={t} statusOffset={54} isBreak={false} paused={true} progress={0.0} secondsLeft={25 * 60} />
+              <div style={{ position: 'absolute', inset: 0 }}>
+                <ScreenMoodCheckin t={t} statusOffset={54} />
+              </div>
+            </div>
+          </IOSWrap>
+        </DCArtboard>
+        <DCArtboard id="set-ambient" label="Ambient sounds" width={420} height={830}>
+          <IOSWrap t={t} dark={dark}><ScreenAmbient t={t} statusOffset={54} /></IOSWrap>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* ANDROID */}
+      {/* ─────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="android"
+        title="06 · Android (Material 3)"
+        subtitle="The same system on Android — key screens for parity."
+      >
+        <DCArtboard id="and-timer" label="Focus · running" width={428} height={830}>
+          <AndroidWrap t={t} dark={dark}>
+            <ScreenTimer t={t} statusOffset={28} isBreak={false} paused={false} progress={0.32} secondsLeft={17 * 60 + 4} />
+          </AndroidWrap>
+        </DCArtboard>
+        <DCArtboard id="and-tasks" label="Tasks" width={428} height={830}>
+          <AndroidWrap t={t} dark={dark}><ScreenTasks t={t} statusOffset={28} /></AndroidWrap>
+        </DCArtboard>
+        <DCArtboard id="and-stats" label="Insights" width={428} height={830}>
+          <AndroidWrap t={t} dark={dark}><ScreenStats t={t} statusOffset={28} /></AndroidWrap>
+        </DCArtboard>
+        <DCArtboard id="and-settings" label="Settings" width={428} height={830}>
+          <AndroidWrap t={t} dark={dark}><ScreenSettings t={t} statusOffset={28} dark={dark} /></AndroidWrap>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* TWEAKS PANEL */}
+      {/* ─────────────────────────────────────────────────────────── */}
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Theme">
+          <TweakRadio
+            label="Mode"
+            value={tw.mode}
+            options={['light', 'dark']}
+            onChange={v => setTweak('mode', v)}
+          />
+        </TweakSection>
+        <TweakSection label="Color palette">
+          <TweakRadio
+            label="Palette"
+            value={tw.palette}
+            options={Object.keys(PALETTES)}
+            onChange={v => setTweak('palette', v)}
+          />
+          <TweakColor
+            label="Preview"
+            value={tw.palette}
+            options={Object.entries(PALETTES).map(([id, p]) => p.swatch)}
+            onChange={() => {}}
+          />
+        </TweakSection>
+      </TweaksPanel>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

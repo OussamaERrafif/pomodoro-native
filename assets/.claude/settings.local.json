@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"C:\\\\Users\\\\thunderX\\\\Desktop\\\\Programing\\\\pomodoro-native\\\\app\\\\\\(tabs\\)\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\thunderX\\\\Desktop\\\\Programing\\\\pomodoro-native\\\\app\\\\onboarding\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\thunderX\\\\Desktop\\\\Programing\\\\pomodoro-native\\\\app\\\\modal\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\thunderX\\\\Desktop\\\\Programing\\\\pomodoro-native\\\\src\\\\components\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\thunderX\\\\Desktop\\\\Programing\\\\pomodoro-native\\\\src\\\\store\")"
+    ]
+  }
+}
