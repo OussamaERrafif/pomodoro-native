@@ -30,6 +30,8 @@ export default function AmbientModal() {
 
   const ambientSound = useAppStore((s) => s.ambientSound);
   const setAmbientSound = useAppStore((s) => s.setAmbientSound);
+  const ambientVolume = useAppStore((s) => s.ambientVolume);
+  const setAmbientVolume = useAppStore((s) => s.setAmbientVolume);
 
   const [playing, setPlaying] = useState(ambientSound !== 'none' ? ambientSound : null);
 
@@ -83,6 +85,28 @@ export default function AmbientModal() {
           </View>
         </View>
       )}
+
+      {/* Volume control */}
+      <View style={styles.volumeRow}>
+        <Text style={[styles.volumeLabel, { color: colors.mute }]}>VOLUME</Text>
+        <View style={styles.volumeBars}>
+          {[0.2, 0.4, 0.6, 0.8, 1.0].map((level, i) => (
+            <TouchableOpacity
+              key={i}
+              onPress={() => setAmbientVolume(level)}
+              activeOpacity={0.7}
+              style={[
+                styles.volumeBar,
+                {
+                  height: 8 + i * 4,
+                  backgroundColor: ambientVolume >= level ? colors.focus : `${colors.mute}30`,
+                  borderRadius: 3,
+                },
+              ]}
+            />
+          ))}
+        </View>
+      </View>
 
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
         <Text style={[styles.listLabel, { color: colors.mute }]}>ALL SOUNDS</Text>
@@ -173,4 +197,11 @@ const styles = StyleSheet.create({
   waveform: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   waveBar: { width: 3, borderRadius: 2 },
   playBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  volumeRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginHorizontal: 20, marginBottom: 12, paddingHorizontal: 4,
+  },
+  volumeLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 1.8 },
+  volumeBars: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
+  volumeBar: { width: 18 },
 });

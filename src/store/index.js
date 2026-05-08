@@ -47,6 +47,7 @@ export const useAppStore = create(
       notifications: true,
       haptics: true,
       ambientSound: 'none',
+      ambientVolume: 0.7,
       focusGoal: 8,
       selectedGoals: ['Study', 'Work', 'Reading'],
 
@@ -59,6 +60,7 @@ export const useAppStore = create(
       setNotifications: (v) => set({ notifications: v }),
       setHaptics: (v) => set({ haptics: v }),
       setAmbientSound: (v) => set({ ambientSound: v }),
+      setAmbientVolume: (v) => set({ ambientVolume: v }),
       setFocusGoal: (v) => set({ focusGoal: v }),
       setSelectedGoals: (v) => set({ selectedGoals: v }),
       setUserName: (v) => set({ userName: v }),
@@ -205,6 +207,7 @@ export const useAppStore = create(
         notifications: s.notifications,
         haptics: s.haptics,
         ambientSound: s.ambientSound,
+        ambientVolume: s.ambientVolume,
         focusGoal: s.focusGoal,
         selectedGoals: s.selectedGoals,
         tasks: s.tasks,

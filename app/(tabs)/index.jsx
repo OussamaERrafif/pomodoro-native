@@ -8,7 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../src/hooks/useTheme';
 import { useTimer } from '../../src/hooks/useTimer';
 import { useAppStore } from '../../src/store';
-import { BlobTimer, TomatoDots, ResetIcon, PlayIcon, PauseIcon, SkipIcon, TargetIcon, MicIcon } from '../../src/components';
+import { BlobTimer, TomatoDots, ResetIcon, PlayIcon, PauseIcon, SkipIcon, TargetIcon, MicIcon, WaveIcon } from '../../src/components';
 import { FONT_DISPLAY } from '../../src/constants/tokens';
 import { fmt } from '../../src/utils/time';
 
@@ -32,6 +32,7 @@ export default function TimerScreen() {
   const tasks = useAppStore((s) => s.tasks);
   const userName = useAppStore((s) => s.userName);
   const haptics = useAppStore((s) => s.haptics);
+  const ambientSound = useAppStore((s) => s.ambientSound);
   const startTimer = useAppStore((s) => s.startTimer);
   const pauseTimer = useAppStore((s) => s.pauseTimer);
   const resetTimer = useAppStore((s) => s.resetTimer);
@@ -172,15 +173,32 @@ export default function TimerScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Voice FAB */}
-      <TouchableOpacity
-        onPress={() => router.push('/voice')}
-        activeOpacity={0.8}
-        style={[styles.voiceFab, { backgroundColor: `${colors.focus}15` }]}
-      >
-        <MicIcon size={16} color={colors.focus} />
-        <Text style={[styles.voiceFabText, { color: colors.focus }]}>Voice tasks</Text>
-      </TouchableOpacity>
+      {/* Bottom FABs */}
+      <View style={styles.fabRow}>
+        <TouchableOpacity
+          onPress={() => router.push('/voice')}
+          activeOpacity={0.8}
+          style={[styles.fab, { backgroundColor: `${colors.focus}15` }]}
+        >
+          <MicIcon size={16} color={colors.focus} />
+          <Text style={[styles.fabText, { color: colors.focus }]}>Voice tasks</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => router.push('/modal/ambient')}
+          activeOpacity={0.8}
+          style={[styles.fab, {
+            backgroundColor: ambientSound !== 'none' ? `${colors.breakC}20` : `${colors.focus}15`,
+          }]}
+        >
+          <WaveIcon size={16} color={ambientSound !== 'none' ? colors.breakC : colors.focus} />
+          <Text style={[styles.fabText, {
+            color: ambientSound !== 'none' ? colors.breakC : colors.focus,
+          }]}>
+            {ambientSound !== 'none' ? 'Sound on' : 'Sounds'}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -247,10 +265,13 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 10,
   },
-  voiceFab: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 14,
-    borderRadius: 100, marginBottom: 6,
+  fabRow: {
+    flexDirection: 'row', justifyContent: 'center', gap: 10,
+    marginBottom: 6,
   },
-  voiceFabText: { fontSize: 13, fontWeight: '600' },
+  fab: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 8, paddingHorizontal: 14, borderRadius: 100,
+  },
+  fabText: { fontSize: 13, fontWeight: '600' },
 });
