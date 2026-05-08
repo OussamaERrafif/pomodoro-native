@@ -1,13 +1,103 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { useTheme } from '../../src/hooks/useTheme';
 import { useAppStore } from '../../src/store';
 import { BarChart, FlameIcon } from '../../src/components';
 import { FONT_DISPLAY } from '../../src/constants/tokens';
 import { getWeekData, fmtHM } from '../../src/utils/time';
+import { computeFocusScore, scoreLabel } from '../../src/utils/focusScore';
 
 const MOODS = ['Drained', 'Foggy', 'Okay', 'Sharp', 'Flowing'];
+
+const ARC_SIZE = 160;
+const ARC_STROKE = 12;
+const ARC_R = (ARC_SIZE - ARC_STROKE) / 2;
+const ARC_CX = ARC_SIZE / 2;
+const ARC_CY = ARC_SIZE / 2;
+// Arc spans 240° starting from 150° (bottom-left), going clockwise to 30° (bottom-right)
+const START_DEG = 150;
+const SWEEP_DEG = 240;
+
+function polarToXY(cx, cy, r, deg) {
+  const rad = (deg * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function arcPath(cx, cy, r, startDeg, sweepDeg) {
+  const start = polarToXY(cx, cy, r, startDeg);
+  const end = polarToXY(cx, cy, r, startDeg + sweepDeg);
+  const largeArc = sweepDeg > 180 ? 1 : 0;
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+}
+
+function FocusScoreCard({ score, label, sessionPts, moodPts, consistencyPts, colors }) {
+  const fillSweep = (score / 100) * SWEEP_DEG;
+  const trackPath = arcPath(ARC_CX, ARC_CY, ARC_R, START_DEG, SWEEP_DEG);
+  const fillPath = fillSweep > 0
+    ? arcPath(ARC_CX, ARC_CY, ARC_R, START_DEG, Math.max(fillSweep, 4))
+    : null;
+
+  return (
+    <View style={[scoreStyles.card, { backgroundColor: colors.surface, shadowColor: colors.ink }]}>
+      <View style={scoreStyles.top}>
+        <View style={scoreStyles.arcWrap}>
+          <Svg width={ARC_SIZE} height={ARC_SIZE}>
+            <Path d={trackPath} fill="none" stroke={`${colors.focus}20`} strokeWidth={ARC_STROKE} strokeLinecap="round" />
+            {fillPath && (
+              <Path d={fillPath} fill="none" stroke={colors.focus} strokeWidth={ARC_STROKE} strokeLinecap="round" />
+            )}
+          </Svg>
+          <View style={scoreStyles.arcCenter}>
+            <Text style={[scoreStyles.scoreNum, { color: colors.ink, fontFamily: FONT_DISPLAY }]}>
+              {score}
+            </Text>
+            <Text style={[scoreStyles.scoreLabel, { color: colors.focus }]}>{label}</Text>
+          </View>
+        </View>
+
+        <View style={scoreStyles.breakdown}>
+          <Text style={[scoreStyles.breakTitle, { color: colors.mute }]}>BREAKDOWN</Text>
+          <ScoreRow label="Sessions" pts={sessionPts} max={40} color={colors.focus} inkColor={colors.ink} muteColor={colors.mute} />
+          <ScoreRow label="Mood" pts={moodPts} max={30} color={colors.breakC} inkColor={colors.ink} muteColor={colors.mute} />
+          <ScoreRow label="Consistency" pts={consistencyPts} max={30} color={colors.plum} inkColor={colors.ink} muteColor={colors.mute} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function ScoreRow({ label, pts, max, color, inkColor, muteColor }) {
+  return (
+    <View style={scoreStyles.scoreRow}>
+      <Text style={[scoreStyles.rowLabel, { color: inkColor }]}>{label}</Text>
+      <View style={[scoreStyles.rowTrack, { backgroundColor: `${color}20` }]}>
+        <View style={[scoreStyles.rowFill, { width: `${(pts / max) * 100}%`, backgroundColor: color }]} />
+      </View>
+      <Text style={[scoreStyles.rowPts, { color: muteColor }]}>{pts}<Text style={{ fontSize: 10 }}>/{max}</Text></Text>
+    </View>
+  );
+}
+
+const scoreStyles = StyleSheet.create({
+  card: {
+    borderRadius: 22, padding: 18,
+    shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+  },
+  top: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  arcWrap: { width: ARC_SIZE, height: ARC_SIZE, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  arcCenter: { position: 'absolute', alignItems: 'center' },
+  scoreNum: { fontSize: 42, fontWeight: '400', letterSpacing: -1, lineHeight: 46 },
+  scoreLabel: { fontSize: 12, fontWeight: '600', letterSpacing: 0.4, marginTop: 2 },
+  breakdown: { flex: 1, gap: 10 },
+  breakTitle: { fontSize: 10, fontWeight: '600', letterSpacing: 1.8, marginBottom: 2 },
+  scoreRow: { gap: 4 },
+  rowLabel: { fontSize: 12, fontWeight: '500' },
+  rowTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  rowFill: { height: '100%', borderRadius: 3 },
+  rowPts: { fontSize: 11, fontWeight: '600' },
+});
 
 export default function StatsScreen() {
   const colors = useTheme();
@@ -24,6 +114,13 @@ export default function StatsScreen() {
   const totalMinutes = weekTotal * 25;
   const streak = Math.min(todaySessions, 10);
   const goalPct = Math.round((todaySessions / Math.max(focusGoal, 1)) * 100);
+
+  const todayKey = new Date().toISOString().split('T')[0];
+  const todayMood = moodHistory[todayKey]?.value || null;
+  const { total: score, sessionPts, moodPts, consistencyPts } = computeFocusScore({
+    todaySessions, focusGoal, todayMood, sessionHistory,
+  });
+  const label = scoreLabel(score);
 
   // Category breakdown
   const tagTotals = {};
@@ -55,6 +152,16 @@ export default function StatsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+        {/* Focus Score */}
+        <FocusScoreCard
+          score={score}
+          label={label}
+          sessionPts={sessionPts}
+          moodPts={moodPts}
+          consistencyPts={consistencyPts}
+          colors={colors}
+        />
 
         {/* Today hero */}
         <View style={[styles.heroCard, { backgroundColor: colors.plum }]}>
