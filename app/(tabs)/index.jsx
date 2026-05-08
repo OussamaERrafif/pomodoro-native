@@ -173,6 +173,17 @@ export default function TimerScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Distraction button — only visible while timer is running */}
+      {isRunning && (
+        <TouchableOpacity
+          onPress={() => router.push('/modal/distraction')}
+          activeOpacity={0.7}
+          style={[styles.distractionBtn, { borderColor: `${colors.mute}40` }]}
+        >
+          <Text style={[styles.distractionText, { color: colors.mute }]}>Got distracted?</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Bottom FABs */}
       <View style={styles.fabRow}>
         <TouchableOpacity
@@ -265,6 +276,11 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 10,
   },
+  distractionBtn: {
+    alignSelf: 'center', borderWidth: 1, borderRadius: 100,
+    paddingVertical: 6, paddingHorizontal: 16, marginBottom: 8,
+  },
+  distractionText: { fontSize: 12, fontWeight: '500' },
   fabRow: {
     flexDirection: 'row', justifyContent: 'center', gap: 10,
     marginBottom: 6,

@@ -115,12 +115,26 @@ export default function StatsScreen() {
   const streak = Math.min(todaySessions, 10);
   const goalPct = Math.round((todaySessions / Math.max(focusGoal, 1)) * 100);
 
+  const distractionLog = useAppStore((s) => s.distractionLog);
+
   const todayKey = new Date().toISOString().split('T')[0];
   const todayMood = moodHistory[todayKey]?.value || null;
   const { total: score, sessionPts, moodPts, consistencyPts } = computeFocusScore({
     todaySessions, focusGoal, todayMood, sessionHistory,
   });
   const label = scoreLabel(score);
+
+  // Distraction breakdown — count by reason, last 7 days
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const recentDistractions = distractionLog.filter((d) => d.timestamp >= sevenDaysAgo);
+  const distractionCounts = {};
+  recentDistractions.forEach(({ reason }) => {
+    distractionCounts[reason] = (distractionCounts[reason] || 0) + 1;
+  });
+  const distractionEntries = Object.entries(distractionCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const maxCount = distractionEntries[0]?.[1] || 1;
 
   // Category breakdown
   const tagTotals = {};
@@ -253,6 +267,46 @@ export default function StatsScreen() {
             })}
           </View>
         </View>
+        {/* Distractions */}
+        {distractionEntries.length > 0 && (
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <View style={styles.cardHeader}>
+              <Text style={[styles.cardTitle, { color: colors.ink }]}>What distracted you</Text>
+              <Text style={[styles.cardSub, { color: colors.mute }]}>
+                {recentDistractions.length} this week
+              </Text>
+            </View>
+            <View style={{ gap: 10, marginTop: 8 }}>
+              {distractionEntries.map(([reason, count]) => {
+                const EMOJI_MAP = {
+                  phone: '📱', social: '💬', thoughts: '🌀', noise: '🔊',
+                  hunger: '🍵', urgent: '⚡', fatigue: '😴', other: '✏️',
+                };
+                const emoji = EMOJI_MAP[reason] || '✏️';
+                const label = reason.charAt(0).toUpperCase() + reason.slice(1);
+                return (
+                  <View key={reason} style={{ gap: 4 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={[styles.tagName, { color: colors.ink }]}>
+                        {emoji}  {label}
+                      </Text>
+                      <Text style={[styles.tagVal, { color: colors.mute }]}>{count}×</Text>
+                    </View>
+                    <View style={[styles.stackedBar, { marginBottom: 0, marginTop: 0, height: 6 }]}>
+                      <View style={{
+                        width: `${(count / maxCount) * 100}%`,
+                        height: '100%',
+                        backgroundColor: colors.warm || colors.focus,
+                        borderRadius: 3,
+                      }} />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
       </ScrollView>
     </View>
   );

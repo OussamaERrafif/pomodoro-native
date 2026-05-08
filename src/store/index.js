@@ -184,6 +184,15 @@ export const useAppStore = create(
       // ── Stats ─────────────────────────────────────────────────
       sessionHistory: DEFAULT_HISTORY,
       moodHistory: {},
+      distractionLog: [],
+
+      logDistraction: (reason) =>
+        set((s) => ({
+          distractionLog: [
+            ...s.distractionLog,
+            { id: Date.now().toString(), reason, timestamp: Date.now() },
+          ],
+        })),
 
       logMood: (value, note) => {
         const today = new Date().toISOString().split('T')[0];
@@ -213,6 +222,7 @@ export const useAppStore = create(
         tasks: s.tasks,
         sessionHistory: s.sessionHistory,
         moodHistory: s.moodHistory,
+        distractionLog: s.distractionLog,
         todaySessions: s.todaySessions,
         openAIKey: s.openAIKey,
       }),
