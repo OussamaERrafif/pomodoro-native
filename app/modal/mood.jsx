@@ -23,17 +23,28 @@ export default function MoodModal() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const logMood = useAppStore((s) => s.logMood);
+  const logEnergy = useAppStore((s) => s.logEnergy);
+  const startTimer = useAppStore((s) => s.startTimer);
   const focusDuration = useAppStore((s) => s.focusDuration);
 
   const [selected, setSelected] = useState(4);
+  const [energy, setEnergy] = useState(2); // 1=Low 2=Medium 3=High
   const [note, setNote] = useState('');
 
   const moodColors = [colors.focus, colors.focusSoft, colors.warm, colors.breakSoft, colors.breakC];
 
   const handleStart = () => {
     logMood(selected, note.trim());
+    logEnergy(energy);
+    startTimer();
     router.back();
   };
+
+  const ENERGY_LEVELS = [
+    { value: 1, label: 'Low',    icon: '🔋' },
+    { value: 2, label: 'Medium', icon: '⚡' },
+    { value: 3, label: 'High',   icon: '🚀' },
+  ];
 
   return (
     <KeyboardAvoidingView
@@ -84,6 +95,36 @@ export default function MoodModal() {
           })}
         </View>
 
+        {/* Energy level */}
+        <View style={styles.energySection}>
+          <Text style={[styles.energyLabel, { color: colors.mute }]}>ENERGY LEVEL</Text>
+          <View style={styles.energyRow}>
+            {ENERGY_LEVELS.map((e) => {
+              const isOn = energy === e.value;
+              return (
+                <TouchableOpacity
+                  key={e.value}
+                  onPress={() => setEnergy(e.value)}
+                  activeOpacity={0.75}
+                  style={[
+                    styles.energyChip,
+                    {
+                      backgroundColor: isOn ? `${colors.focus}18` : colors.surface,
+                      borderColor: isOn ? colors.focus : 'transparent',
+                      borderWidth: isOn ? 1.5 : 0,
+                    },
+                  ]}
+                >
+                  <Text style={styles.energyIcon}>{e.icon}</Text>
+                  <Text style={[styles.energyChipLabel, { color: isOn ? colors.focus : colors.mute, fontWeight: isOn ? '700' : '500' }]}>
+                    {e.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         {/* Note field */}
         <View style={[styles.noteField, { backgroundColor: colors.surface }]}>
           <Text style={[styles.notePre, { color: colors.ink }]}>Note </Text>
@@ -128,6 +169,12 @@ const styles = StyleSheet.create({
   moodItem: { flex: 1, alignItems: 'center', gap: 8 },
   moodCircle: { width: 44, height: 44, borderRadius: 22 },
   moodLabel: { fontSize: 11 },
+  energySection: { gap: 8 },
+  energyLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.4 },
+  energyRow: { flexDirection: 'row', gap: 10 },
+  energyChip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 14 },
+  energyIcon: { fontSize: 16 },
+  energyChipLabel: { fontSize: 13 },
   noteField: {
     flexDirection: 'row', alignItems: 'center',
     borderRadius: 14, padding: 14,

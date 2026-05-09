@@ -87,6 +87,14 @@ export const AMBIENT_SOUNDS = [
   { id: 'brown', label: 'Brown noise', sub: 'Deep, low-frequency calm' },
 ];
 
+export const FOCUS_SPACES = [
+  { id: 'work',     icon: '💼', label: 'Work',     focusDuration: 25, shortBreak: 5,  longBreak: 15, sound: 'none',   palette: 'sunset' },
+  { id: 'study',    icon: '📚', label: 'Study',    focusDuration: 50, shortBreak: 10, longBreak: 25, sound: 'rain',   palette: 'forest' },
+  { id: 'creative', icon: '🎨', label: 'Creative', focusDuration: 30, shortBreak: 5,  longBreak: 15, sound: 'cafe',   palette: 'bloom'  },
+  { id: 'reading',  icon: '📖', label: 'Reading',  focusDuration: 20, shortBreak: 5,  longBreak: 10, sound: 'forest', palette: 'clay'   },
+  { id: 'chill',    icon: '🌿', label: 'Chill',    focusDuration: 15, shortBreak: 5,  longBreak: 10, sound: 'fire',   palette: 'clay'   },
+];
+
 export const TAGS = [
   { label: 'Work', colorKey: 'focus' },
   { label: 'Reading', colorKey: 'breakC' },

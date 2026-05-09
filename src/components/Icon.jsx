@@ -176,6 +176,18 @@ export const MicIcon = ({ size = 20, color = '#000' }) => (
   </Svg>
 );
 
+export const SparkleIcon = ({ size = 20, color = '#000', strokeWidth = 1.7 }) => (
+  <Icon size={size} color={color} strokeWidth={strokeWidth} d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3zM5 17l.8 2.2L8 20l-2.2.8L5 23l-.8-2.2L2 20l2.2-.8L5 17zM19 2l.6 1.4L21 4l-1.4.6L19 6l-.6-1.4L17 4l1.4-.6L19 2z" />
+);
+
+export const ChatIcon = ({ size = 20, color = '#000', strokeWidth = 1.7 }) => (
+  <Icon size={size} color={color} strokeWidth={strokeWidth} d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+);
+
+export const SendIcon = ({ size = 20, color = '#000', strokeWidth = 1.7 }) => (
+  <Icon size={size} color={color} strokeWidth={strokeWidth} d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+);
+
 export const SpinnerIcon = ({ size = 20, color = '#000', strokeWidth = 1.7 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
     strokeWidth={strokeWidth} strokeLinecap="round">
