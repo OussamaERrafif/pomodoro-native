@@ -7,40 +7,16 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { Audio } from 'expo-av';
+import { useAudioRecorder, RecordingPresets, setAudioModeAsync, requestRecordingPermissionsAsync } from 'expo-audio';
 import { useTheme } from '../src/hooks/useTheme';
 import { useAppStore } from '../src/store';
+
 import {
   ChevLeftIcon, MicIcon, PlusIcon, CheckIcon, XIcon,
   ArrowIcon, PillButton, TomatoDots,
 } from '../src/components';
 import { FONT_DISPLAY } from '../src/constants/tokens';
 import { transcribeAudio, parseTasksWithAI } from '../src/utils/openai';
-
-// Fallback preset in case RecordingOptionsPresets is unavailable
-const RECORDING_PRESET = Audio.RecordingOptionsPresets?.HIGH_QUALITY ?? {
-  android: {
-    extension: '.m4a',
-    outputFormat: 2,
-    audioEncoder: 3,
-    sampleRate: 44100,
-    numberOfChannels: 1,
-    bitRate: 128000,
-  },
-  ios: {
-    extension: '.m4a',
-    outputFormat: 'aac ',
-    audioQuality: 127,
-    sampleRate: 44100,
-    numberOfChannels: 1,
-    bitRate: 128000,
-    linearPCMBitDepth: 16,
-    linearPCMIsBigEndian: false,
-    linearPCMIsFloat: false,
-  },
-  web: {},
-};
-
 const TAG_KEYWORDS = {
   Work: ['work', 'meeting', 'email', 'report', 'review', 'call', 'project', 'narrative', 'reply', 'inbox', 'deadline', 'presentation', 'q3', 'q4'],
   Reading: ['read', 'chapter', 'book', 'article', 'paper', 'deep work'],
@@ -97,9 +73,11 @@ export default function VoiceScreen() {
   const colors = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const addTask = useAppStore((s) => s.addTask);
+  const addTasks = useAppStore((s) => s.addTasks);
   const haptics = useAppStore((s) => s.haptics);
   const openAIKey = useAppStore((s) => s.openAIKey);
+
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   const [phase, setPhase] = useState('idle'); // 'idle' | 'recording' | 'loading' | 'review'
   const [loadingLabel, setLoadingLabel] = useState('');
@@ -109,7 +87,6 @@ export default function VoiceScreen() {
   const [recordSeconds, setRecordSeconds] = useState(0);
 
   const inputRef = useRef(null);
-  const recordingRef = useRef(null);
   const recordTimerRef = useRef(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseLoop = useRef(null);
@@ -135,14 +112,14 @@ export default function VoiceScreen() {
 
   const startRecording = async () => {
     try {
-      const { granted } = await Audio.requestPermissionsAsync();
+      const { granted } = await requestRecordingPermissionsAsync();
       if (!granted) {
         Alert.alert('Permission required', 'Allow microphone access to use voice input.');
         return;
       }
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const { recording } = await Audio.Recording.createAsync(RECORDING_PRESET);
-      recordingRef.current = recording;
+      await setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
       if (haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       setPhase('recording');
     } catch (err) {
@@ -151,17 +128,13 @@ export default function VoiceScreen() {
   };
 
   const stopRecording = async () => {
-    const rec = recordingRef.current;
-    if (!rec) return;
-    recordingRef.current = null;
-
     try {
       setPhase('loading');
       setLoadingLabel('Transcribing with Whisper…');
 
-      await rec.stopAndUnloadAsync();
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-      const uri = rec.getURI();
+      await recorder.stop();
+      await setAudioModeAsync({ allowsRecordingIOS: false });
+      const uri = recorder.uri;
 
       const transcript = await transcribeAudio(uri, openAIKey);
       setInputText(transcript);
@@ -186,13 +159,12 @@ export default function VoiceScreen() {
   };
 
   const cancelRecording = async () => {
-    if (recordingRef.current) {
-      try {
-        await recordingRef.current.stopAndUnloadAsync();
-        await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-      } catch (_) {}
-      recordingRef.current = null;
-    }
+    try {
+      if (recorder.isRecording) {
+        await recorder.stop();
+        await setAudioModeAsync({ allowsRecordingIOS: false });
+      }
+    } catch (_) {}
     setPhase('idle');
   };
 
@@ -230,7 +202,7 @@ export default function VoiceScreen() {
 
   const handleConfirm = () => {
     const toAdd = drafts.filter((d) => !removed.has(d.id));
-    toAdd.forEach((d) => addTask({ title: d.title, tag: d.tag, tagColorKey: d.tagColorKey, total: d.total }));
+    addTasks(toAdd.map((d) => ({ title: d.title, tag: d.tag, tagColorKey: d.tagColorKey, total: d.total })));
     if (haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     router.back();
   };
@@ -332,8 +304,14 @@ export default function VoiceScreen() {
           showsVerticalScrollIndicator={false}
         >
           <TouchableOpacity
-            onPress={openAIKey ? startRecording : undefined}
-            activeOpacity={openAIKey ? 0.75 : 1}
+            onPress={() => {
+              if (!openAIKey) {
+                Alert.alert('API key required', 'Add your OpenAI key in Settings → AI & Voice to enable voice input.');
+                return;
+              }
+              startRecording();
+            }}
+            activeOpacity={0.75}
             style={styles.micWrap}
           >
             <View style={[styles.micGlow, {

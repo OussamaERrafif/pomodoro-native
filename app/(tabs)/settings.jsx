@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,9 +8,9 @@ import { useTheme } from '../../src/hooks/useTheme';
 import { useAppStore } from '../../src/store';
 import {
   TargetIcon, LeafIcon, MoonIcon, BellIcon, WaveIcon, ZapIcon,
-  SunIcon, HeartIcon, ShieldIcon, ChevRightIcon, MicIcon,
+  SunIcon, HeartIcon, ShieldIcon, ChevRightIcon, MicIcon, SparkleIcon,
 } from '../../src/components';
-import { FONT_DISPLAY, PALETTES, PALETTE_IDS } from '../../src/constants/tokens';
+import { FONT_DISPLAY, PALETTES, PALETTE_IDS, FOCUS_SPACES } from '../../src/constants/tokens';
 
 function SettingRow({ Icon, label, sub, right, color, isLast, colors }) {
   return (
@@ -71,6 +71,7 @@ export default function SettingsScreen() {
   const router = useRouter();
 
   const darkMode = useAppStore((s) => s.darkMode);
+  const themeMode = useAppStore((s) => s.themeMode) ?? 'light';
   const palette = useAppStore((s) => s.palette);
   const focusDuration = useAppStore((s) => s.focusDuration);
   const shortBreakDuration = useAppStore((s) => s.shortBreakDuration);
@@ -80,6 +81,7 @@ export default function SettingsScreen() {
   const ambientSound = useAppStore((s) => s.ambientSound);
 
   const setDarkMode = useAppStore((s) => s.setDarkMode);
+  const setThemeMode = useAppStore((s) => s.setThemeMode);
   const setPalette = useAppStore((s) => s.setPalette);
   const setFocusDuration = useAppStore((s) => s.setFocusDuration);
   const setShortBreakDuration = useAppStore((s) => s.setShortBreakDuration);
@@ -88,6 +90,20 @@ export default function SettingsScreen() {
   const setHaptics = useAppStore((s) => s.setHaptics);
   const openAIKey = useAppStore((s) => s.openAIKey);
   const setOpenAIKey = useAppStore((s) => s.setOpenAIKey);
+  const aiEnabled = useAppStore((s) => s.aiEnabled);
+  const setAiEnabled = useAppStore((s) => s.setAiEnabled);
+  const deepWorkMode = useAppStore((s) => s.deepWorkMode);
+  const setDeepWorkMode = useAppStore((s) => s.setDeepWorkMode);
+  const smartNotifications = useAppStore((s) => s.smartNotifications);
+  const setSmartNotifications = useAppStore((s) => s.setSmartNotifications);
+  const ritualEnabled = useAppStore((s) => s.ritualEnabled);
+  const ritualType = useAppStore((s) => s.ritualType);
+  const setRitualEnabled = useAppStore((s) => s.setRitualEnabled);
+  const setRitualType = useAppStore((s) => s.setRitualType);
+  const activeSpace = useAppStore((s) => s.activeSpace);
+  const applySpace = useAppStore((s) => s.applySpace);
+  const quickStartMode = useAppStore((s) => s.quickStartMode);
+  const setQuickStartMode = useAppStore((s) => s.setQuickStartMode);
   const [showKey, setShowKey] = useState(false);
 
   return (
@@ -98,6 +114,48 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+        <Section title="Focus spaces" colors={colors}>
+          <View style={[styles.row, { borderBottomWidth: 0, flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
+            <Text style={[styles.rowSub, { color: colors.mute }]}>
+              One tap to set your sound, durations, and palette.
+            </Text>
+            <View style={styles.spacesGrid}>
+              {FOCUS_SPACES.map((space) => {
+                const isActive = activeSpace === space.id;
+                return (
+                  <TouchableOpacity
+                    key={space.id}
+                    onPress={() => applySpace(space.id)}
+                    activeOpacity={0.75}
+                    style={[
+                      styles.spaceChip,
+                      {
+                        backgroundColor: isActive ? `${colors.focus}18` : colors.bg,
+                        borderColor: isActive ? colors.focus : colors.line,
+                        borderWidth: isActive ? 1.5 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.spaceIcon}>{space.icon}</Text>
+                    <Text style={[styles.spaceLabel, { color: isActive ? colors.focus : colors.ink, fontWeight: isActive ? '700' : '500' }]}>
+                      {space.label}
+                    </Text>
+                    <Text style={[styles.spaceSub, { color: colors.mute }]}>{space.focusDuration}m</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {activeSpace && (
+              <TouchableOpacity onPress={() => applySpace(activeSpace)}>
+                <Text style={[styles.rowSub, { color: colors.focus, textAlign: 'center' }]}>
+                  {FOCUS_SPACES.find((s) => s.id === activeSpace)?.icon}{'  '}
+                  {FOCUS_SPACES.find((s) => s.id === activeSpace)?.label} space active
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </Section>
 
         <Section title="Timer durations" colors={colors}>
           <DurationRow
@@ -110,7 +168,7 @@ export default function SettingsScreen() {
           <DurationRow
             Icon={LeafIcon} color={colors.breakC} label="Short break" sub="Between sessions"
             value={shortBreakDuration}
-            onMinus={() => setShortBreakDuration(Math.max(1, shortBreakDuration - 1))}
+            onMinus={() => setShortBreakDuration(Math.max(1, shortBreakDuration - 5))}
             onPlus={() => setShortBreakDuration(Math.min(30, shortBreakDuration + 5))}
             colors={colors}
           />
@@ -131,6 +189,18 @@ export default function SettingsScreen() {
             right={
               <Switch
                 value={notifications} onValueChange={setNotifications}
+                trackColor={{ false: colors.line, true: colors.focus }}
+                thumbColor="#fff"
+              />
+            }
+          />
+          <SettingRow
+            Icon={SparkleIcon} color={colors.focus} label="Smart notifications"
+            sub="Peak window, goal nudges, streak reminders"
+            colors={colors}
+            right={
+              <Switch
+                value={smartNotifications} onValueChange={setSmartNotifications}
                 trackColor={{ false: colors.line, true: colors.focus }}
                 thumbColor="#fff"
               />
@@ -169,12 +239,16 @@ export default function SettingsScreen() {
             colors={colors}
             right={
               <View style={[styles.themePicker, { backgroundColor: colors.bg }]}>
-                {['Light', 'Dark', 'Auto'].map((mode, i) => {
-                  const isActive = (mode === 'Light' && !darkMode) || (mode === 'Dark' && darkMode);
+                {['Light', 'Dark', 'Auto'].map((mode) => {
+                  const modeKey = mode.toLowerCase();
+                  const isActive = themeMode === modeKey;
                   return (
                     <TouchableOpacity
                       key={mode}
-                      onPress={() => setDarkMode(mode === 'Dark')}
+                      onPress={() => {
+                        setThemeMode(modeKey);
+                        if (mode !== 'Auto') setDarkMode(mode === 'Dark');
+                      }}
                       style={[
                         styles.themeOption,
                         isActive && [styles.themeOptionActive, { backgroundColor: colors.surface }],
@@ -221,28 +295,57 @@ export default function SettingsScreen() {
         </Section>
 
         <Section title="AI & Voice" colors={colors}>
-          <View style={[styles.row, { borderBottomWidth: 0 }]}>
-            <View style={[styles.rowIcon, { backgroundColor: `${colors.focus}18` }]}>
-              <MicIcon size={17} color={colors.focus} />
-            </View>
-            <View style={styles.apiKeyWrap}>
-              <Text style={[styles.rowLabel, { color: colors.ink }]}>OpenAI API Key</Text>
-              <TextInput
-                value={openAIKey}
-                onChangeText={setOpenAIKey}
-                placeholder="sk-…"
-                placeholderTextColor={colors.soft}
-                secureTextEntry={!showKey}
-                style={[styles.apiKeyInput, { color: colors.ink }]}
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="off"
+          <SettingRow
+            Icon={SparkleIcon} color={colors.focus} label="AI features"
+            sub="Coach, voice input, breakdown & insights"
+            colors={colors}
+            isLast={!aiEnabled}
+            right={
+              <Switch
+                value={aiEnabled}
+                onValueChange={(v) => {
+                  if (!v) {
+                    Alert.alert(
+                      'Turn off AI features?',
+                      'Voice input, AI Coach, task breakdown, weekly insights, and day planner will be hidden. Your data stays safe.',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Turn off', style: 'destructive', onPress: () => setAiEnabled(false) },
+                      ]
+                    );
+                  } else {
+                    setAiEnabled(true);
+                  }
+                }}
+                trackColor={{ false: colors.line, true: colors.focus }}
+                thumbColor="#fff"
               />
+            }
+          />
+          {aiEnabled && (
+            <View style={[styles.row, { borderBottomWidth: 0 }]}>
+              <View style={[styles.rowIcon, { backgroundColor: `${colors.focus}18` }]}>
+                <MicIcon size={17} color={colors.focus} />
+              </View>
+              <View style={styles.apiKeyWrap}>
+                <Text style={[styles.rowLabel, { color: colors.ink }]}>OpenAI API Key</Text>
+                <TextInput
+                  value={openAIKey}
+                  onChangeText={setOpenAIKey}
+                  placeholder="sk-…"
+                  placeholderTextColor={colors.soft}
+                  secureTextEntry={!showKey}
+                  style={[styles.apiKeyInput, { color: colors.ink }]}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="off"
+                />
+              </View>
+              <TouchableOpacity onPress={() => setShowKey((v) => !v)} style={styles.showKeyBtn}>
+                <Text style={[styles.showKeyText, { color: colors.mute }]}>{showKey ? 'Hide' : 'Show'}</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={() => setShowKey((v) => !v)} style={styles.showKeyBtn}>
-              <Text style={[styles.showKeyText, { color: colors.mute }]}>{showKey ? 'Hide' : 'Show'}</Text>
-            </TouchableOpacity>
-          </View>
+          )}
         </Section>
 
         <Section title="Focus mode" colors={colors}>
@@ -250,15 +353,75 @@ export default function SettingsScreen() {
             Icon={ShieldIcon} color={colors.focus} label="Block distractions"
             sub="Mute notifications during focus"
             colors={colors}
-            isLast
             right={
               <Switch
-                value={true}
+                value={deepWorkMode}
+                onValueChange={setDeepWorkMode}
                 trackColor={{ false: colors.line, true: colors.focus }}
                 thumbColor="#fff"
               />
             }
           />
+          <SettingRow
+            Icon={ZapIcon} color={colors.breakC} label="Quick start"
+            sub="Skip mood check — begin sessions instantly"
+            colors={colors}
+            isLast
+            right={
+              <Switch
+                value={quickStartMode}
+                onValueChange={setQuickStartMode}
+                trackColor={{ false: colors.line, true: colors.breakC }}
+                thumbColor="#fff"
+              />
+            }
+          />
+        </Section>
+
+        <Section title="Focus rituals" colors={colors}>
+          <SettingRow
+            Icon={SparkleIcon} color={colors.focus} label="Pre-session ritual"
+            sub="A moment to center before each session"
+            colors={colors}
+            isLast={!ritualEnabled}
+            right={
+              <Switch
+                value={ritualEnabled}
+                onValueChange={setRitualEnabled}
+                trackColor={{ false: colors.line, true: colors.focus }}
+                thumbColor="#fff"
+              />
+            }
+          />
+          {ritualEnabled && (
+            <SettingRow
+              Icon={LeafIcon} color={colors.breakC} label="Ritual type"
+              colors={colors}
+              isLast
+              right={
+                <View style={[styles.themePicker, { backgroundColor: colors.bg }]}>
+                  {['Breathe', 'Intention'].map((type) => {
+                    const key = type.toLowerCase();
+                    const isActive = ritualType === key;
+                    return (
+                      <TouchableOpacity
+                        key={key}
+                        onPress={() => setRitualType(key)}
+                        style={[
+                          styles.themeOption,
+                          isActive && [styles.themeOptionActive, { backgroundColor: colors.surface }],
+                        ]}
+                      >
+                        <Text style={[styles.themeOptionText, { color: isActive ? colors.ink : colors.mute }]}>
+                          {type}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              }
+            />
+          )}
         </Section>
 
       </ScrollView>
@@ -304,4 +467,12 @@ const styles = StyleSheet.create({
   apiKeyInput: { fontSize: 13, fontFamily: 'monospace', marginTop: 4, letterSpacing: 0.4 },
   showKeyBtn: { paddingHorizontal: 4, paddingVertical: 2 },
   showKeyText: { fontSize: 12, fontWeight: '600' },
+  spacesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  spaceChip: {
+    flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    width: '18%', paddingVertical: 10, borderRadius: 14, gap: 4,
+  },
+  spaceIcon: { fontSize: 20 },
+  spaceLabel: { fontSize: 11 },
+  spaceSub: { fontSize: 10 },
 });

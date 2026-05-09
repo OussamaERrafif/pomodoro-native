@@ -1,11 +1,13 @@
-import React, { useEffect, useId } from 'react';
+import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import Svg, { Path, Circle, Defs, LinearGradient, Stop, ClipPath, G } from 'react-native-svg';
 import Animated, {
   useSharedValue,
   useAnimatedProps,
+  useAnimatedStyle,
   withRepeat,
   withTiming,
+  withSequence,
   Easing,
   cancelAnimation,
 } from 'react-native-reanimated';
@@ -34,6 +36,7 @@ function buildWavePath(size, progress, offset) {
 export function BlobTimer({ size = 280, progress = 0.3, isBreak = false, colors, paused = false }) {
   const uid = `bt${size}${isBreak ? 'b' : 'f'}`;
   const waveOffset = useSharedValue(0);
+  const breatheScale = useSharedValue(1);
 
   const r = size / 2 - 4;
   const cx = size / 2;
@@ -50,10 +53,23 @@ export function BlobTimer({ size = 280, progress = 0.3, isBreak = false, colors,
         -1,
         false
       );
+      breatheScale.value = withRepeat(
+        withSequence(
+          withTiming(1.013, { duration: 2400, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1.0, { duration: 2400, easing: Easing.inOut(Easing.sin) })
+        ),
+        -1,
+        false
+      );
     } else {
       cancelAnimation(waveOffset);
+      cancelAnimation(breatheScale);
+      breatheScale.value = withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) });
     }
-    return () => cancelAnimation(waveOffset);
+    return () => {
+      cancelAnimation(waveOffset);
+      cancelAnimation(breatheScale);
+    };
   }, [paused]);
 
   const animatedProps1 = useAnimatedProps(() => {
@@ -66,8 +82,12 @@ export function BlobTimer({ size = 280, progress = 0.3, isBreak = false, colors,
     return { d: buildWavePath(size, progress, waveOffset.value + 1.5) };
   });
 
+  const breatheStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: breatheScale.value }],
+  }));
+
   return (
-    <View style={{ width: size, height: size }}>
+    <Animated.View style={[{ width: size, height: size }, breatheStyle]}>
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <Defs>
           <LinearGradient id={`${uid}g`} x1="0" y1="0" x2="0" y2="1">
@@ -97,6 +117,6 @@ export function BlobTimer({ size = 280, progress = 0.3, isBreak = false, colors,
 
         <Circle cx={cx} cy={cy} r={r} fill="none" stroke={colors.line} strokeWidth={1.5} />
       </Svg>
-    </View>
+    </Animated.View>
   );
 }

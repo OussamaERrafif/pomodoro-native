@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react';
-import { Audio } from 'expo-av';
+import { useEffect } from 'react';
+import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { useAppStore } from '../store';
 
 // Add looping .mp3 files to assets/sounds/ and map them here.
 // e.g. rain: require('../../assets/sounds/rain.mp3')
-const SOUND_SOURCES = {
+export const SOUND_SOURCES = {
   rain:   null,
   cafe:   null,
   white:  null,
@@ -18,79 +18,38 @@ export function useAmbientSound() {
   const ambientVolume = useAppStore((s) => s.ambientVolume);
   const isRunning = useAppStore((s) => s.isRunning);
 
-  const soundRef = useRef(null);
-  const loadedIdRef = useRef(null);
+  const activeSource = ambientSound !== 'none' ? (SOUND_SOURCES[ambientSound] ?? null) : null;
 
-  // Configure audio session once
+  // useAudioPlayer automatically disposes and recreates when activeSource changes
+  const player = useAudioPlayer(activeSource);
+
+  // Configure audio session once on mount
   useEffect(() => {
-    Audio.setAudioModeAsync({
+    setAudioModeAsync({
       playsInSilentModeIOS: true,
       staysActiveInBackground: true,
     }).catch(() => {});
   }, []);
 
-  // Load / unload sound when selection changes
+  // Enable looping whenever a new player is created
   useEffect(() => {
-    let cancelled = false;
+    if (!activeSource) return;
+    player.loop = true;
+  }, [player, activeSource]);
 
-    async function load() {
-      // Unload previous
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync().catch(() => {});
-        soundRef.current = null;
-        loadedIdRef.current = null;
-      }
-
-      if (ambientSound === 'none') return;
-
-      const source = SOUND_SOURCES[ambientSound];
-      if (!source) return; // audio file not yet added
-
-      try {
-        const { sound } = await Audio.Sound.createAsync(source, {
-          isLooping: true,
-          volume: ambientVolume,
-          shouldPlay: isRunning,
-        });
-        if (cancelled) {
-          await sound.unloadAsync().catch(() => {});
-          return;
-        }
-        soundRef.current = sound;
-        loadedIdRef.current = ambientSound;
-      } catch (_) {}
-    }
-
-    load();
-
-    return () => {
-      cancelled = true;
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ambientSound]);
-
-  // Play / pause when timer starts or stops
+  // Play / pause in sync with the timer
   useEffect(() => {
-    if (!soundRef.current) return;
+    if (!activeSource) return;
     if (isRunning) {
-      soundRef.current.playAsync().catch(() => {});
+      player.play();
     } else {
-      soundRef.current.pauseAsync().catch(() => {});
+      player.pause();
     }
-  }, [isRunning]);
+  }, [isRunning, activeSource, player]);
 
-  // Update volume live
+  // Live volume updates
   useEffect(() => {
-    if (!soundRef.current) return;
-    soundRef.current.setVolumeAsync(ambientVolume).catch(() => {});
-  }, [ambientVolume]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync().catch(() => {});
-      }
-    };
-  }, []);
+    if (!activeSource) return;
+    player.volume = ambientVolume;
+  }, [ambientVolume, player, activeSource]);
 }

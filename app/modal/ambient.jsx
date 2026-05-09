@@ -10,6 +10,7 @@ import { useAppStore } from '../../src/store';
 import {
   ChevLeftIcon, RainIcon, CafeIcon, WaveIcon, LeafIcon, FireIcon, PlayIcon, PauseIcon,
 } from '../../src/components';
+import { SOUND_SOURCES } from '../../src/hooks/useAmbientSound';
 import { FONT_DISPLAY } from '../../src/constants/tokens';
 
 const { width } = Dimensions.get('window');
@@ -36,6 +37,8 @@ export default function AmbientModal() {
   const [playing, setPlaying] = useState(ambientSound !== 'none' ? ambientSound : null);
 
   const currentSound = SOUNDS.find((s) => s.id === playing);
+  const hasSource = (id) => !!SOUND_SOURCES[id];
+  const isActuallyPlaying = playing !== null && hasSource(playing);
 
   const handleSelect = (id) => {
     if (playing === id) {
@@ -64,7 +67,7 @@ export default function AmbientModal() {
       </View>
 
       {/* Now playing */}
-      {currentSound && (
+      {currentSound && isActuallyPlaying && (
         <View style={[styles.nowPlaying, { backgroundColor: colors.breakC }]}>
           <Svg width={120} height={120} style={[StyleSheet.absoluteFill, { right: -20, bottom: -30 }]}
             opacity={0.2}>
@@ -137,12 +140,14 @@ export default function AmbientModal() {
                 <Text style={[styles.soundLabel, { color: colors.ink }]}>{sound.label}</Text>
                 <Text style={[styles.soundSub, { color: colors.mute }]}>{sound.sub}</Text>
               </View>
-              {isPlaying ? (
+              {isPlaying && hasSource(sound.id) ? (
                 <View style={styles.waveform}>
                   {[10, 16, 12, 20, 8].map((h, j) => (
                     <View key={j} style={[styles.waveBar, { height: h, backgroundColor: tint }]} />
                   ))}
                 </View>
+              ) : isPlaying && !hasSource(sound.id) ? (
+                <Text style={[styles.noSourceNote, { color: colors.mute }]}>No file</Text>
               ) : (
                 <View style={[styles.playBtn, { backgroundColor: colors.bg }]}>
                   <PlayIcon size={14} color={colors.ink} />
@@ -197,6 +202,7 @@ const styles = StyleSheet.create({
   waveform: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   waveBar: { width: 3, borderRadius: 2 },
   playBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  noSourceNote: { fontSize: 10, fontWeight: '600' },
   volumeRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     marginHorizontal: 20, marginBottom: 12, paddingHorizontal: 4,

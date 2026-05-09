@@ -19,6 +19,22 @@ export function getDayLabel(offsetFromToday = 0) {
   return days[d.getDay()];
 }
 
+export function computeStreak(sessionHistory) {
+  let streak = 0;
+  const today = new Date();
+  for (let i = 0; i < 366; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().split('T')[0];
+    if ((sessionHistory[key] || 0) > 0) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
 export function getWeekData(history) {
   const today = new Date();
   const result = [];

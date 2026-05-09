@@ -8,8 +8,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../src/hooks/useTheme';
 import { useAppStore } from '../../src/store';
-import { TomatoDots, CheckIcon, FlameIcon, PlusIcon, MicIcon } from '../../src/components';
+import { TomatoDots, CheckIcon, FlameIcon, PlusIcon, MicIcon, ChevRightIcon } from '../../src/components';
 import { FONT_DISPLAY } from '../../src/constants/tokens';
+import { computeStreak } from '../../src/utils/time';
+import { getNextTask, getTodayPlan } from '../../src/utils/scheduling';
 
 const FILTERS = ['All', 'Work', 'Reading', 'Design', 'Personal', 'Wellness'];
 
@@ -25,6 +27,10 @@ export default function TasksScreen() {
   const setTaskActive = useAppStore((s) => s.setTaskActive);
   const currentTaskId = useAppStore((s) => s.currentTaskId);
   const haptics = useAppStore((s) => s.haptics);
+  const sessionHistory = useAppStore((s) => s.sessionHistory);
+  const sessionLog = useAppStore((s) => s.sessionLog);
+  const openAIKey = useAppStore((s) => s.openAIKey);
+  const aiEnabled = useAppStore((s) => s.aiEnabled);
 
   const [activeFilter, setActiveFilter] = useState('All');
 
@@ -33,7 +39,12 @@ export default function TasksScreen() {
     : tasks.filter((t) => t.tag === activeFilter);
 
   const totalTomatoes = tasks.reduce((s, t) => s + t.total, 0);
-  const streak = Math.min(todaySessions, 10);
+  const streak = computeStreak(sessionHistory);
+
+  const nextTask = getNextTask(tasks);
+  const { sessionsLeft, minutesLeft, bestWindow, isInBestWindow } = getTodayPlan({
+    todaySessions, focusGoal, sessionLog,
+  });
 
   const getTagColor = (task) => {
     if (task.tagColor) return task.tagColor;
@@ -46,12 +57,6 @@ export default function TasksScreen() {
     toggleTask(id);
   };
 
-  const handleSetActive = (id) => {
-    if (haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    setTaskActive(id);
-    router.push('/(tabs)');
-  };
-
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
       {/* Header */}
@@ -62,10 +67,12 @@ export default function TasksScreen() {
             <Text style={[styles.title, { color: colors.ink, fontFamily: FONT_DISPLAY }]}>Tasks</Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => router.push('/voice')} activeOpacity={0.7}
-              style={[styles.headerBtn, { backgroundColor: colors.surface, shadowColor: colors.ink }]}>
-              <MicIcon size={18} color={colors.ink} />
-            </TouchableOpacity>
+            {aiEnabled && (
+              <TouchableOpacity onPress={() => router.push('/voice')} activeOpacity={0.7}
+                style={[styles.headerBtn, { backgroundColor: colors.surface, shadowColor: colors.ink }]}>
+                <MicIcon size={18} color={colors.ink} />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity onPress={() => router.push('/modal/add-task')} activeOpacity={0.8}
               style={[styles.addBtn, { backgroundColor: colors.ink }]}>
               <PlusIcon size={20} color={colors.bg} />
@@ -116,17 +123,65 @@ export default function TasksScreen() {
       {/* Task list */}
       <FlatList
         data={filteredTasks}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          nextTask ? (
+            <View style={[styles.smartCard, { backgroundColor: colors.surface, borderColor: `${colors.focus}30` }]}>
+              <View style={styles.smartTop}>
+                <View style={[styles.smartBadge, { backgroundColor: `${colors.focus}18` }]}>
+                  <Text style={[styles.smartBadgeText, { color: colors.focus }]}>FOCUS NEXT</Text>
+                </View>
+                {bestWindow && (
+                  <Text style={[styles.smartWindow, { color: colors.mute }]}>
+                    {isInBestWindow ? '⚡ Peak window now' : `Peak: ${bestWindow.label}`}
+                  </Text>
+                )}
+              </View>
+              <Text style={[styles.smartTitle, { color: colors.ink }]} numberOfLines={2}>
+                {nextTask.title}
+              </Text>
+              <View style={styles.smartBottom}>
+                <Text style={[styles.smartReason, { color: colors.mute }]}>
+                  {nextTask.reason}
+                  {sessionsLeft > 0 ? `  ·  ${sessionsLeft} session${sessionsLeft !== 1 ? 's' : ''} left today` : '  ·  Goal reached!'}
+                </Text>
+                <View style={styles.smartBtns}>
+                  {aiEnabled && openAIKey ? (
+                    <TouchableOpacity
+                      onPress={() => router.push('/modal/day-plan')}
+                      activeOpacity={0.78}
+                      style={[styles.smartBtn, { backgroundColor: `${colors.focus}18` }]}
+                    >
+                      <Text style={[styles.smartBtnText, { color: colors.focus }]}>Plan day</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                      setTaskActive(nextTask.id);
+                      router.push('/(tabs)/');
+                    }}
+                    activeOpacity={0.78}
+                    style={[styles.smartBtn, { backgroundColor: colors.focus }]}
+                  >
+                    <Text style={styles.smartBtnText}>Focus</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          ) : null
+        }
         renderItem={({ item }) => {
           const tagColor = getTagColor(item);
           const isActive = item.id === currentTaskId && !item.complete;
+          const subtasks = item.subtasks || [];
+          const doneSubtasks = subtasks.filter((s) => s.done).length;
 
           return (
             <TouchableOpacity
-              onPress={() => !item.complete && handleSetActive(item.id)}
-              onLongPress={() => handleToggle(item.id)}
+              onPress={() => router.push(`/modal/task-detail?id=${item.id}`)}
               activeOpacity={0.85}
               style={[
                 styles.taskCard,
@@ -134,7 +189,7 @@ export default function TasksScreen() {
                   backgroundColor: colors.surface,
                   borderWidth: isActive ? 1.5 : 0,
                   borderColor: isActive ? colors.focus : 'transparent',
-                  opacity: item.complete ? 0.55 : 1,
+                  opacity: item.complete ? 0.6 : 1,
                   shadowColor: colors.ink,
                 },
               ]}
@@ -159,23 +214,44 @@ export default function TasksScreen() {
                     color: item.complete ? colors.mute : colors.ink,
                     textDecorationLine: item.complete ? 'line-through' : 'none',
                   },
-                ]} numberOfLines={2}>
+                ]} numberOfLines={1}>
                   {item.title}
                 </Text>
+
+                {/* Description snippet */}
+                {item.description ? (
+                  <Text style={[styles.taskDesc, { color: colors.mute }]} numberOfLines={1}>
+                    {item.description}
+                  </Text>
+                ) : null}
+
                 <View style={styles.taskMeta}>
                   <View style={[styles.tagPill, { backgroundColor: `${tagColor}18` }]}>
                     <Text style={[styles.tagText, { color: tagColor }]}>{item.tag}</Text>
                   </View>
                   <TomatoDots done={item.done} total={item.total} colors={colors} size={6} />
+                  {subtasks.length > 0 && (
+                    <Text style={[styles.stepsText, { color: colors.mute }]}>
+                      {doneSubtasks}/{subtasks.length} steps
+                    </Text>
+                  )}
                   {isActive && (
                     <Text style={[styles.runningBadge, { color: colors.focus }]}>· running</Text>
                   )}
                 </View>
+
+                {/* Sub-task progress bar */}
+                {subtasks.length > 0 && (
+                  <View style={[styles.subtaskBar, { backgroundColor: colors.line }]}>
+                    <View style={[styles.subtaskBarFill, {
+                      backgroundColor: colors.breakC,
+                      width: `${(doneSubtasks / subtasks.length) * 100}%`,
+                    }]} />
+                  </View>
+                )}
               </View>
 
-              {isActive && (
-                <View style={[styles.activeDot, { backgroundColor: colors.focus }]} />
-              )}
+              <ChevRightIcon size={15} color={colors.soft} strokeWidth={1.8} />
             </TouchableOpacity>
           );
         }}
@@ -219,6 +295,20 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: 13, fontWeight: '550' },
   list: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24, gap: 10 },
+  smartCard: {
+    borderRadius: 18, padding: 16, marginBottom: 10, borderWidth: 1,
+    gap: 8,
+  },
+  smartTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  smartBadge: { paddingVertical: 3, paddingHorizontal: 9, borderRadius: 100 },
+  smartBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8 },
+  smartWindow: { fontSize: 11, fontWeight: '500' },
+  smartTitle: { fontSize: 15, fontWeight: '600', lineHeight: 20 },
+  smartBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  smartBtns: { flexDirection: 'row', gap: 8 },
+  smartReason: { flex: 1, fontSize: 12, lineHeight: 16 },
+  smartBtn: { paddingVertical: 7, paddingHorizontal: 16, borderRadius: 100 },
+  smartBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
   taskCard: {
     borderRadius: 16, padding: 14, paddingLeft: 12,
     flexDirection: 'row', alignItems: 'center', gap: 12,
@@ -231,5 +321,8 @@ const styles = StyleSheet.create({
   tagPill: { paddingVertical: 2, paddingHorizontal: 8, borderRadius: 100 },
   tagText: { fontSize: 10.5, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' },
   runningBadge: { fontSize: 11, fontWeight: '600' },
-  activeDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  taskDesc: { fontSize: 12, lineHeight: 16, marginBottom: 4 },
+  stepsText: { fontSize: 11, fontWeight: '500' },
+  subtaskBar: { height: 3, borderRadius: 2, overflow: 'hidden', marginTop: 6 },
+  subtaskBarFill: { height: '100%', borderRadius: 2 },
 });

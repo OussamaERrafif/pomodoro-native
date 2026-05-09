@@ -5,7 +5,12 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { useAppStore } from '../store';
 
-const isExpoGo = Constants.appOwnership === 'expo';
+// expo-notifications requires a development build — it does not work in Expo Go
+// (Android push notifications removed from Expo Go in SDK 53).
+// Use: npx expo run:android / npx expo run:ios
+const isExpoGo =
+  Constants.executionEnvironment === 'storeClient' ||
+  Constants.appOwnership === 'expo';
 
 async function scheduleCompletionNotification(isBreak) {
   if (isExpoGo) return;
@@ -41,7 +46,7 @@ export function useTimer() {
         if (haptics) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         }
-        if (notifications) {
+        if (notifications && !isExpoGo) {
           scheduleCompletionNotification(state.isBreak);
         }
         state.completeSession();

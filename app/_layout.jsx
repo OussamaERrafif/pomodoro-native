@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useColorScheme } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -11,7 +12,10 @@ import { useTheme } from '../src/hooks/useTheme';
 
 SplashScreen.preventAutoHideAsync();
 
-const isExpoGo = Constants.appOwnership === 'expo';
+const isExpoGo =
+  Constants.executionEnvironment === 'storeClient' ||
+  Constants.appOwnership === 'expo' ||
+  !Constants.executionEnvironment;
 
 if (!isExpoGo) {
   Notifications.setNotificationHandler({
@@ -24,7 +28,12 @@ if (!isExpoGo) {
 }
 
 function AppLayout() {
-  const darkMode = useAppStore((s) => s.darkMode);
+  const themeMode = useAppStore((s) => s.themeMode) ?? 'light';
+  const systemScheme = useColorScheme();
+  const isDark =
+    themeMode === 'dark' ? true :
+    themeMode === 'auto' ? systemScheme === 'dark' :
+    false;
   const colors = useTheme();
 
   useEffect(() => {
@@ -33,7 +42,7 @@ function AppLayout() {
 
   return (
     <>
-      <StatusBar style={darkMode ? 'light' : 'dark'} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" />
@@ -47,7 +56,35 @@ function AppLayout() {
           options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
         />
         <Stack.Screen
+          name="modal/task-detail"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modal/distraction"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
           name="modal/ambient"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modal/ritual"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modal/coach"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modal/session-note"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modal/share-report"
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="modal/day-plan"
           options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
         />
         <Stack.Screen
